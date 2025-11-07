@@ -1,7 +1,6 @@
 package canvas 
 
 import (
-	"log"
 	"bytes"
 	"image"
 	"image/color"
@@ -49,7 +48,7 @@ func ImgToBytes(img image.Image) bytes.Buffer {
 	var buf bytes.Buffer
 	err := png.Encode(&buf, img)
 	if err != nil {
-		log.Println(err)
+		panic(err)
 	}
 	return buf
 }

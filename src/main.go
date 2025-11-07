@@ -15,6 +15,11 @@ import (
 	"net/http"
 )
 
+func RecoverFrom() {
+	if r := recover(); r != nil {
+		log.Println("Recovered from panic:", r)
+	}
+}
 
 func SolveCaptcha(w http.ResponseWriter, r *http.Request) {
 	var captchaRequest canvas.CaptchaRequest
@@ -22,8 +27,7 @@ func SolveCaptcha(w http.ResponseWriter, r *http.Request) {
     err := decoder.Decode(&captchaRequest)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
-		return
+		panic(err)
 	}
 	captcha := captchaCache[captchaRequest.Key]
 	delete(captchaCache, captchaRequest.Key)
@@ -52,20 +56,21 @@ func GetCaptcha(w http.ResponseWriter, r *http.Request) {
 	encoded, err := json.Marshal(captcha)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
-		return
+		panic(err)
 	}
 	_, err = w.Write(encoded)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
-		return
+		panic(err)
 	}
 }
 
 var captchaCache = make(map[string]*canvas.CaptchaSolution)
 
 func main() {
+	defer RecoverFrom()
+		
+	rand.Seed(time.Now().UnixNano())
 	
 	file, err := os.OpenFile("application.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -82,8 +87,7 @@ func main() {
 	)
 	
 	log.Println("Started")
-		
-	rand.Seed(time.Now().UnixNano())
+	
 	r := mux.NewRouter()
     r.HandleFunc("/captcha/get", GetCaptcha)
     r.HandleFunc("/captcha/solve", SolveCaptcha)
