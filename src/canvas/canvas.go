@@ -89,7 +89,6 @@ func MakeCaptcha() *CaptchaOut {
 		yy := 280
 		yy += rand.Intn(64)-128
 		elementRect := image.Rect(xx, yy, xx+imgWidth, yy+imgHeight)
-		
 		var img image.Image
 		if i == solution {
 			img = RandImg(imgWidth, imgHeight, brush1)
