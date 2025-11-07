@@ -1,0 +1,168 @@
+<html>
+
+<head>
+	<style>
+		body {
+			background-color: darkgray;
+		}
+		#captcha-container {
+			width:512px;
+			height:512px;
+		}
+		#captcha-canvas {
+			background: #5650bf;
+			background: radial-gradient(circle, rgba(86, 80, 191, 1) 0%, rgba(9, 9, 121, 0.42) 49%, rgba(0, 212, 255, 1) 100%);
+			pointer-events: auto;
+		}
+		.icon {
+			width:16px;
+			height:16px;
+			background-color:white;
+			border-radius: 8px;
+		}
+		#solve-icon {
+			visibility: hidden;
+			position:absolute;
+		}
+		#solve-button  {
+			width:24px;
+			height:24px;
+			border-radius: 12px;
+			position:relative;
+			right: -484px;
+			top: -508px;
+		}
+		#solve-button:hover {
+			background-color:blue;
+			border-radius: 10px;
+		}
+	</style>
+</head>
+
+<div style="margin-bottom:1.25rem">
+	<button onclick="getCaptcha()">Solve</button>
+	<button id="send-captcha" onclick="solveCaptcha()">Send</button>
+</div>
+
+<div id="captcha-elements">
+
+</div>
+
+<div id="captcha-container">
+	<img id="captcha-canvas"></img>
+	<object id="solve-icon" class="icon" data="icons/human.svg" type="image/svg+xml">
+	</object>
+	<object id="solve-button" class="icon" data="icons/solve.svg" type="image/svg+xml">
+	</object>
+</div>
+
+
+<script>
+	let solution = {}
+
+	function imgFromBase64(data) {
+		return `data:image/png;base64,${data}`;
+	}
+	
+	function makeElementsRow(captchaBundle) {
+		const container = document.getElementById("captcha-container");
+		const canvas = document.getElementById("captcha-canvas");
+		const row = document.getElementById("captcha-elements");
+		const elementsRow = document.createElement("div"); 
+		captchaBundle.elements.forEach((e, i) => {
+			const img = document.createElement("img"); 
+			img.src = imgFromBase64(e);
+			elementsRow.append(img);
+			img.onclick = function() {
+				container.style.display = "revert";
+				row.style.visibility = "hidden";
+				row.style.height = "0px";
+				solution.selected = i;
+			}
+		});
+		return elementsRow;
+	}
+	
+	function makeCaptcha(captchaBundle) {
+		let container = document.getElementById("captcha-container");
+		let elements = document.getElementById("captcha-elements");
+		let canvas = document.getElementById("captcha-canvas");
+		let icon = document.getElementById("solve-icon");
+		solution = {};
+		solution.key = captchaBundle.key;
+		canvas.onclick = function(event) {
+			const rect = canvas.getBoundingClientRect();
+			const relativeX = event.clientX - rect.left;
+			const relativeY = event.clientY - rect.top;
+			let x = relativeX; 
+			let y = relativeY;
+			icon.style.visibility = "visible";
+			icon.style.left = event.clientX-8;
+			icon.style.top = event.clientY-8;
+			solution.pos = { x, y };
+		}
+		canvas.ondragstart = function(event) {
+			event.preventDefault(); 
+		};
+		canvas.src = imgFromBase64(captchaBundle.canvas);
+		elements.innerHTML = "";
+		elements.append(makeElementsRow(captchaBundle));
+		elements.style.height = "revert";
+		elements.style.visibility = "visible";
+		icon.style.visibility = "hidden";
+		container.style.display = "none";
+	}
+	
+	function getCaptcha() {
+		fetch("http://127.0.0.1:8080/captcha/get").then(
+			async resp => {
+			switch(resp.status) {
+				case 200: {
+					let captcha = await resp.json();
+					makeCaptcha(captcha);
+				}
+			}
+		});
+	}
+	
+	function solveCaptcha() {
+	
+		let data = {
+			key : solution.key,
+			index : solution.selected,
+			pos : solution.pos
+		};
+	
+		fetch("http://127.0.0.1:8080/captcha/solve", {
+			method: 'POST', 
+			headers: {
+			  'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(data),
+		}).then(async resp => {
+			switch(resp.status) {
+				case 400: {
+					let err = await resp.text();
+					alert(err);
+					break;
+				}
+				case 200: {
+					alert("Captcha solved");
+					break;
+				}
+			}
+		}).catch(err => { console.log(err) });
+	}
+	
+	document.addEventListener("DOMContentLoaded", function() {
+		const solveButton = document.getElementById("solve-button");
+		solveButton.style.cursor = 'wait'; // Show pointer cursor as clickable indicator
+		solveButton.addEventListener('click', () => {
+		// Custom action on click
+			alert('Solve button clicked!');
+		});
+    });
+	
+</script>
+
+</html>
