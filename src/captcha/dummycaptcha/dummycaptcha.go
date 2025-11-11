@@ -1,4 +1,4 @@
-package canvas
+package dummycaptcha
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 	"math/rand"
 
 	"github.com/google/uuid"
-	"gocapt.cha/mask"
+	"gocapt.cha/captcha/dummycaptcha/mask"
 )
 
 var captchaCache = make(map[string]*DummyCaptchaSolution)

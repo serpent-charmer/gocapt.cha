@@ -8,7 +8,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"gocapt.cha/canvas"
+	"gocapt.cha/captcha/dummycaptcha"
 )
 
 func RecoverFrom() {
@@ -18,7 +18,7 @@ func RecoverFrom() {
 }
 
 func SolveCaptcha(w http.ResponseWriter, r *http.Request) {
-	solution, err := canvas.SolutionFromJson(r.Body)
+	solution, err := dummycaptcha.SolutionFromJson(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		panic(err)
@@ -33,7 +33,7 @@ func SolveCaptcha(w http.ResponseWriter, r *http.Request) {
 
 func GetCaptcha(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	captcha := canvas.Make()
+	captcha := dummycaptcha.Make()
 	encodedCaptcha, err := captcha.ToJson()
 	if err != nil {
 		panic(err)
