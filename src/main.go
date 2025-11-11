@@ -1,18 +1,14 @@
 package main
 
-
 import (
-	"os"
 	"fmt"
 	"log"
-	"time"
-	"gocapt.cha/canvas"
-	"encoding/json"
-	"math/rand"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/handlers"
-	"github.com/google/uuid"
 	"net/http"
+	"os"
+
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"gocapt.cha/canvas"
 )
 
 func RecoverFrom() {
@@ -22,74 +18,54 @@ func RecoverFrom() {
 }
 
 func SolveCaptcha(w http.ResponseWriter, r *http.Request) {
-	var captchaRequest canvas.CaptchaRequest
-	decoder := json.NewDecoder(r.Body)
-    err := decoder.Decode(&captchaRequest)
+	solution, err := canvas.SolutionFromJson(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		panic(err)
 	}
-	captcha := captchaCache[captchaRequest.Key]
-	delete(captchaCache, captchaRequest.Key)
-	if captcha == nil {
+	rs := solution.Validate()
+	if rs != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, "Captcha not found")
-		return
-	}
-	if captcha.Index != captchaRequest.Index {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, "Wrong element")
-		return
-	}
-	if !captchaRequest.Position.In(captcha.Solution) {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, "Not in bounds")
+		fmt.Fprint(w, rs)
 		return
 	}
 }
 
 func GetCaptcha(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	captcha := canvas.MakeCaptcha()
-	captcha.Key = uuid.NewString()
-	captchaCache[captcha.Key] = &captcha.Solution
-	encoded, err := json.Marshal(captcha)
+	captcha := canvas.Make()
+	encodedCaptcha, err := captcha.ToJson()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		panic(err)
 	}
-	_, err = w.Write(encoded)
+	_, err = w.Write(encodedCaptcha)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		panic(err)
 	}
 }
 
-var captchaCache = make(map[string]*canvas.CaptchaSolution)
-
 func main() {
 	defer RecoverFrom()
-		
-	rand.Seed(time.Now().UnixNano())
-	
+
 	file, err := os.OpenFile("application.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Panicln("Couldn't open log file", err)
 	}
 	defer file.Close()
 	log.SetOutput(file)
-	
+
 	c := handlers.CORS(
-		handlers.AllowedOrigins([]string{"http://127.0.0.1:8000"}), 
+		handlers.AllowedOrigins([]string{"http://127.0.0.1:8000"}),
 		handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS"}),
 		handlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
 		handlers.AllowCredentials(),
 	)
-	
+
 	log.Println("Started")
-	
+
 	r := mux.NewRouter()
-    r.HandleFunc("/captcha/get", GetCaptcha)
-    r.HandleFunc("/captcha/solve", SolveCaptcha)
+	r.HandleFunc("/captcha/get", GetCaptcha)
+	r.HandleFunc("/captcha/solve", SolveCaptcha)
 	http.ListenAndServe("127.0.0.1:8080", c(r))
 }

@@ -15,4 +15,5 @@ require (
 )
 
 replace gocapt.cha/canvas => ./canvas
+
 replace gocapt.cha/mask => ./mask
